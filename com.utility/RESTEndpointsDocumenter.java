@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.validation.constraints.Pattern;
 import javax.ws.rs.Consumes;
@@ -28,6 +29,7 @@ import javax.ws.rs.core.Request;
 
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
@@ -388,10 +390,25 @@ public class RESTEndpointsDocumenter {
 
     private void discoverSwaggerDocInfos(final Method javaMethod, final Class<?> clazz,
             final RestEndpoint newRestEndpoint) {
+        final Api api = clazz.getAnnotation(Api.class);
+        if (api != null) {
+            newRestEndpoint.description = api.value();
+            newRestEndpoint.tags = Arrays.stream(api.tags()).collect(Collectors.toList());
+        }
+
         final ApiOperation apiOperations = javaMethod.getAnnotation(ApiOperation.class);
         if (apiOperations != null) {
-            newRestEndpoint.description = apiOperations.value();
-            newRestEndpoint.tags = Arrays.asList(apiOperations.tags());
+            if (apiOperations.value() != null && apiOperations.value().length() > 0) {
+                newRestEndpoint.description = apiOperations.value();
+            }
+            // Add child tags
+            if (apiOperations.tags() != null) {
+                for (final String childTag : Arrays.asList(apiOperations.tags())) {
+                    if (!newRestEndpoint.tags.contains(childTag)) {
+                        newRestEndpoint.tags.add(childTag);
+                    }
+                }
+            }
             newRestEndpoint.notes = apiOperations.notes();
         }
 
